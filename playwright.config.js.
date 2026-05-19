@@ -1,0 +1,96 @@
+import { defineConfig, devices } from '@playwright/test';
+
+/**
+ * CMK QA — Playwright Configuration
+ * Sites  : Admin (DMS) + 3 e-commerce (Mondial, The Palace, Frank & Co)
+ * Browser: Chromium only
+ * Env    : Staging (local network — must be run from office / VPN)
+ */
+
+const SITES = {
+  admin:   'https://staging-dms.intra.cmk.co.id',
+  mondial: 'https://staging.intra.mondialjeweler.com',
+  palace:  'https://staging.intra.thepalacejeweler.com',
+  frankco: 'https://staging.intra.frankandcojewellery.com',
+} as const;
+
+export default defineConfig({
+
+  // ── Test discovery ────────────────────────────────────────────────────────
+  testDir: './tests',
+
+  // ── Parallelism ───────────────────────────────────────────────────────────
+  fullyParallel: true,
+
+  // Retry failed tests once (useful on staging which can be flaky)
+  retries: 1,
+
+  // Number of parallel workers
+  workers: 4,
+
+  // ── Reporters ─────────────────────────────────────────────────────────────
+  reporter: [
+    ['html', { outputFolder: 'playwright-report', open: 'never' }],
+    ['list'],
+    ['json', { outputFile: 'playwright-report/results.json' }],
+  ],
+
+  // ── Shared settings (apply to all projects) ───────────────────────────────
+  use: {
+    screenshot:        'only-on-failure',
+    trace:             'on-first-retry',
+    video:             'on-first-retry',
+    actionTimeout:     15_000,  // max time for a single action (click, fill…)
+    navigationTimeout: 30_000,  // max time for page.goto()
+    ignoreHTTPSErrors: true,    // staging certs are often self-signed
+  },
+
+  // ── Output folders ────────────────────────────────────────────────────────
+  outputDir: 'test-results',
+
+  // ── Projects (one per site) ───────────────────────────────────────────────
+  projects: [
+
+    // Admin — DMS
+    {
+      name: 'admin',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: SITES.admin,
+      },
+      // Only runs specs inside tests/admin/ and tests/shared/
+      testMatch: ['**/admin/**/*.spec.ts', '**/shared/**/*.spec.ts'],
+    },
+
+    // E-commerce — Mondial Jeweler
+    {
+      name: 'mondial',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: SITES.mondial,
+      },
+      // Shared ecomm specs run against all 3 stores automatically
+      testMatch: ['**/ecomm/**/*.spec.ts', '**/shared/**/*.spec.ts'],
+    },
+
+    // E-commerce — The Palace Jeweler
+    {
+      name: 'palace',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: SITES.palace,
+      },
+      testMatch: ['**/ecomm/**/*.spec.ts', '**/shared/**/*.spec.ts'],
+    },
+
+    // E-commerce — Frank & Co Jewellery
+    {
+      name: 'frankco',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: SITES.frankco,
+      },
+      testMatch: ['**/ecomm/**/*.spec.ts', '**/shared/**/*.spec.ts'],
+    },
+  ],
+});
