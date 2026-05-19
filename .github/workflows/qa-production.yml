@@ -2,10 +2,8 @@ name: QA Automation — Production
 
 on:
   schedule:
-    # Setiap 1 jam
     - cron: '0 * * * *'
   workflow_dispatch:
-    # Bisa juga dijalankan manual dari GitHub
 
 jobs:
   test:
@@ -29,8 +27,23 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run QA tests — Production
-        run: TEST_ENV=production npx playwright test --project=frankco
+        id: run_tests
+        run: |
+          TEST_ENV=production npx playwright test --project=frankco
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
         continue-on-error: true
+
+      - name: Get test summary
+        id: summary
+        if: always()
+        run: |
+          if [ -f "qa-report.html" ]; then
+            # Ambil ringkasan dari output playwright
+            PASSED=$(grep -o '[0-9]* passed' playwright-report/results.json 2>/dev/null || echo "?")
+            echo "report_exists=true" >> $GITHUB_OUTPUT
+          fi
+          NOW=$(date "+%d %B %Y %H:%M UTC")
+          echo "timestamp=$NOW" >> $GITHUB_OUTPUT
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -50,14 +63,21 @@ jobs:
           server_port: 587
           username: ${{ secrets.GMAIL_USER }}
           password: ${{ secrets.GMAIL_APP_PASSWORD }}
-          subject: |
-            [CMK QA PRODUCTION] ${{ job.status == 'success' && '✅ Test Passed' || '❌ Test Failed' }} - Frank & Co - ${{ github.run_number }}
+          subject: "[CMK QA PRODUCTION] ${{ steps.run_tests.outcome == 'success' && '✅ PASSED' || '❌ FAILED' }} — Frank & Co Run #${{ github.run_number }}"
           to: sidomulyo784@gmail.com
           from: sidomulyo784@gmail.com
           body: |
-            QA Automation Production Run #${{ github.run_number }}
-            Status: ${{ job.status }}
-            Waktu: ${{ github.event.head_commit.timestamp }}
+            ========================================
+            CMK QA Automation — Production Report
+            ========================================
+            Status  : ${{ steps.run_tests.outcome == 'success' && '✅ PASSED' || '❌ FAILED' }}
+            Run     : #${{ github.run_number }}
+            Waktu   : ${{ steps.summary.outputs.timestamp }}
+            Website : https://frankandcojewellery.com
             
-            Lihat detail hasil test di:
+            Detail hasil test:
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            Download report lengkap (HTML):
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
+            ========================================
