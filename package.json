@@ -9,7 +9,24 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "@playwright/test": "^1.59.1",
+    "@playwright/test": "^1.60.0",
     "@types/node": "^25.6.0"
-  }
+  },
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {
+    "fsevents": "^2.3.2",
+    "playwright": "^1.59.1",
+    "playwright-core": "^1.59.1",
+    "undici-types": "^7.19.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RyanSidomulyo/cmk-qa-automation.git"
+  },
+  "bugs": {
+    "url": "https://github.com/RyanSidomulyo/cmk-qa-automation/issues"
+  },
+  "homepage": "https://github.com/RyanSidomulyo/cmk-qa-automation#readme"
 }
