@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
+    env:
+      TEST_ENV: production
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,20 +31,13 @@ jobs:
 
       - name: Run QA tests — Production
         id: run_tests
-        run: |
-          TEST_ENV=production npx playwright test --project=frankco
-          echo "exit_code=$?" >> $GITHUB_OUTPUT
+        run: TEST_ENV=production npx playwright test --project=frankco
         continue-on-error: true
 
-      - name: Get test summary
+      - name: Get timestamp
         id: summary
         if: always()
         run: |
-          if [ -f "qa-report.html" ]; then
-            # Ambil ringkasan dari output playwright
-            PASSED=$(grep -o '[0-9]* passed' playwright-report/results.json 2>/dev/null || echo "?")
-            echo "report_exists=true" >> $GITHUB_OUTPUT
-          fi
           NOW=$(date "+%d %B %Y %H:%M UTC")
           echo "timestamp=$NOW" >> $GITHUB_OUTPUT
 
@@ -49,7 +45,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report-${{ github.run_number }}
+          name: playwright-report
           path: |
             playwright-report/
             qa-report.html
@@ -74,10 +70,10 @@ jobs:
             Run     : #${{ github.run_number }}
             Waktu   : ${{ steps.summary.outputs.timestamp }}
             Website : https://frankandcojewellery.com
-            
+
             Detail hasil test:
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            
-            Download report lengkap (HTML):
+
+            Download report lengkap:
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
             ========================================
