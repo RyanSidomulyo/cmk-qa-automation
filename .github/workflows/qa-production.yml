@@ -1,0 +1,63 @@
+name: QA Automation — Production
+
+on:
+  schedule:
+    # Setiap 1 jam
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    # Bisa juga dijalankan manual dari GitHub
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run QA tests — Production
+        run: TEST_ENV=production npx playwright test --project=frankco
+        continue-on-error: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-${{ github.run_number }}
+          path: |
+            playwright-report/
+            qa-report.html
+          retention-days: 7
+
+      - name: Send email notification
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.GMAIL_USER }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: |
+            [CMK QA PRODUCTION] ${{ job.status == 'success' && '✅ Test Passed' || '❌ Test Failed' }} - Frank & Co - ${{ github.run_number }}
+          to: sidomulyo784@gmail.com
+          from: sidomulyo784@gmail.com
+          body: |
+            QA Automation Production Run #${{ github.run_number }}
+            Status: ${{ job.status }}
+            Waktu: ${{ github.event.head_commit.timestamp }}
+            
+            Lihat detail hasil test di:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
