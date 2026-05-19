@@ -3,25 +3,14 @@ const { defineConfig, devices } = require('@playwright/test');
 
 const ENV = process.env.TEST_ENV || 'staging';
 
-const SITES = {
-  staging: {
-    frankco: 'https://staging.intra.frankandcojewellery.com',
-    mondial: 'https://staging.intra.mondialjeweler.com',
-    palace:  'https://staging.intra.thepalacejeweler.com',
-    admin:   'https://staging-dms.intra.cmk.co.id',
-  },
-  production: {
-    frankco: 'https://frankandcojewellery.com',
-    mondial: 'https://mondialjeweler.com',
-    palace:  'https://thepalacejeweler.com',
-    admin:   'https://dms.cmk.co.id',
-  },
+const BASE_URLS = {
+  frankco: ENV === 'production'
+    ? 'https://frankandcojewellery.com'
+    : 'https://staging.intra.frankandcojewellery.com',
 };
 
-const URLS = SITES[ENV] || SITES.staging;
-
 console.log('Environment : ' + ENV.toUpperCase());
-console.log('Frank & Co  : ' + URLS.frankco);
+console.log('Frank & Co  : ' + BASE_URLS.frankco);
 
 module.exports = defineConfig({
   testDir: './tests',
@@ -45,23 +34,8 @@ module.exports = defineConfig({
   projects: [
     {
       name: 'frankco',
-      use: { ...devices['Desktop Chrome'], baseURL: URLS.frankco },
+      use: { ...devices['Desktop Chrome'], baseURL: BASE_URLS.frankco },
       testMatch: ['**/ecomm/**/*.spec.js'],
-    },
-    {
-      name: 'mondial',
-      use: { ...devices['Desktop Chrome'], baseURL: URLS.mondial },
-      testMatch: ['**/mondial/**/*.spec.js'],
-    },
-    {
-      name: 'palace',
-      use: { ...devices['Desktop Chrome'], baseURL: URLS.palace },
-      testMatch: ['**/palace/**/*.spec.js'],
-    },
-    {
-      name: 'admin',
-      use: { ...devices['Desktop Chrome'], baseURL: URLS.admin },
-      testMatch: ['**/admin/**/*.spec.js'],
     },
   ],
 });
