@@ -10,9 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
-    env:
-      TEST_ENV: production
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,17 +26,21 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run QA tests — Production
+      - name: Run QA tests Production
         id: run_tests
         run: TEST_ENV=production npx playwright test --project=frankco
         continue-on-error: true
 
-      - name: Get timestamp
+      - name: Get email subject
         id: summary
         if: always()
         run: |
-          NOW=$(date "+%d %B %Y %H:%M UTC")
-          echo "timestamp=$NOW" >> $GITHUB_OUTPUT
+          STATUS="${{ steps.run_tests.outcome }}"
+          if [ "$STATUS" = "success" ]; then
+            echo "subject=[CMK QA] ✅ Test Passed - Frank & Co - $(date '+%Y-%m-%d')" >> $GITHUB_OUTPUT
+          else
+            echo "subject=[CMK QA] ❌ Test Failed - Frank & Co - $(date '+%Y-%m-%d')" >> $GITHUB_OUTPUT
+          fi
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -59,21 +60,7 @@ jobs:
           server_port: 587
           username: ${{ secrets.GMAIL_USER }}
           password: ${{ secrets.GMAIL_APP_PASSWORD }}
-          subject: "[CMK QA PRODUCTION] ${{ steps.run_tests.outcome == 'success' && '✅ PASSED' || '❌ FAILED' }} — Frank & Co Run #${{ github.run_number }}"
+          subject: ${{ steps.summary.outputs.subject }}
           to: sidomulyo784@gmail.com
           from: sidomulyo784@gmail.com
-          body: |
-            ========================================
-            CMK QA Automation — Production Report
-            ========================================
-            Status  : ${{ steps.run_tests.outcome == 'success' && '✅ PASSED' || '❌ FAILED' }}
-            Run     : #${{ github.run_number }}
-            Waktu   : ${{ steps.summary.outputs.timestamp }}
-            Website : https://frankandcojewellery.com
-
-            Detail hasil test:
-            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-            Download report lengkap:
-            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts
-            ========================================
+          body: file:///tmp/qa_email_body.txt
