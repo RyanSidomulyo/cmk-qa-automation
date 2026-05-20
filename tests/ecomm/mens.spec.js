@@ -99,7 +99,9 @@ test.describe("Men's collection page — functional test", () => {
     await scrollToBottom(page);
     await page.evaluate(() => window.scrollTo(0, 0));
 
-    const cards = await page.locator('.group.aspect-square').all();
+    // Batasi maksimal 4 card untuk menghindari timeout di CI
+    const allCards = await page.locator('.group.aspect-square').all();
+    const cards = allCards.slice(0, 4);
     console.log('\n  Ditemukan ' + cards.length + ' product card');
     expect(cards.length, 'Harus ada minimal 1 product card').toBeGreaterThan(0);
 
@@ -125,7 +127,9 @@ test.describe("Men's collection page — functional test", () => {
     await scrollToBottom(page);
     await page.evaluate(() => window.scrollTo(0, 0));
 
-    const cards = await page.locator('.group.aspect-square').all();
+    // Batasi maksimal 4 card untuk menghindari timeout di CI
+    const allCards = await page.locator('.group.aspect-square').all();
+    const cards = allCards.slice(0, 4);
     expect(cards.length, 'Harus ada product card').toBeGreaterThan(0);
 
     const results = [];

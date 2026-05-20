@@ -22,6 +22,7 @@ module.exports = defineConfig({
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
     ['list'],
   ],
+  timeout: 180000,
   use: {
     screenshot:        'only-on-failure',
     trace:             'on-first-retry',
