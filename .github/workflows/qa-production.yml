@@ -63,4 +63,5 @@ jobs:
           subject: ${{ steps.summary.outputs.subject }}
           to: erzipaul25@gmail.com
           from: sidomulyo784@gmail.com
+          html_body: file:///tmp/qa_email_body.html
           body: file:///tmp/qa_email_body.txt
