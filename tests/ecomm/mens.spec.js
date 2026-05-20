@@ -148,9 +148,11 @@ test.describe("Men's collection page — functional test", () => {
 
       console.log('  -> Klik View Detail: "' + productName + '"');
 
+      await card.evaluate(el => el.scrollIntoView({ block: 'center' }));
+      await page.waitForTimeout(300);
       await Promise.all([
         page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => null),
-        viewDetailBtn.click(),
+        viewDetailBtn.click({ force: true }),
       ]);
 
       await page.waitForTimeout(500);
