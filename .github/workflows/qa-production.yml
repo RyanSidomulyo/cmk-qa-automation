@@ -61,6 +61,6 @@ jobs:
           username: ${{ secrets.GMAIL_USER }}
           password: ${{ secrets.GMAIL_APP_PASSWORD }}
           subject: ${{ steps.summary.outputs.subject }}
-          to: sidomulyo784@gmail.com
+          to: erzipaul25@gmail.com
           from: sidomulyo784@gmail.com
           body: file:///tmp/qa_email_body.txt
