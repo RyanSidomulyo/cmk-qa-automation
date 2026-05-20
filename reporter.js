@@ -110,9 +110,16 @@ class DetailedReporter {
     let attentionSection = '';
     if (needsAttention.length > 0) {
       const cards = needsAttention.map(r => {
-        const errMsg = r.errors.length > 0
-          ? r.errors[0].replace(/\x1b\[[0-9;]*m/g, '').split('\n')[0].slice(0, 120)
-          : (r.status === 'skipped' ? 'Test di-skip' : 'Test gagal');
+        const rawErr = r.errors.length > 0
+          ? r.errors[0].replace(/\x1b\[[0-9;]*m/g, '')
+          : '';
+        // Ambil semua baris error yang relevan (termasuk list 404)
+        const errLines = rawErr.split('\n')
+          .filter(l => l.trim() && !l.includes('at ') && !l.includes('expect(') && !l.includes('Expected') && !l.includes('Received'))
+          .slice(0, 6)
+          .map(l => l.trim())
+          .join('<br>');
+        const errMsg = errLines || (r.status === 'skipped' ? 'Test di-skip' : 'Test gagal');
         return `
           <div style="background:#ffffff;border-radius:8px;border-left:3px solid ${borderColor(r.status)};padding:12px 14px;margin-bottom:8px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
