@@ -31,6 +31,18 @@ jobs:
         run: TEST_ENV=production npx playwright test --project=mondial
         continue-on-error: true
 
+      - name: Debug — check files
+        if: always()
+        run: |
+          echo "=== Working directory ==="
+          pwd
+          echo "=== Files in workspace ==="
+          ls -la
+          echo "=== qa_email_body.html exists? ==="
+          ls -la qa_email_body.html || echo "FILE NOT FOUND"
+          echo "=== qa-report.html exists? ==="
+          ls -la qa-report.html || echo "FILE NOT FOUND"
+
       - name: Get email subject
         id: summary
         if: always()
