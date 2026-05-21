@@ -7,6 +7,13 @@ class DetailedReporter {
   }
 
   onTestEnd(test, result) {
+    // Skip retry attempts — hanya simpan hasil final
+    if (result.retry > 0 && result.status !== result.status) return;
+    // Hapus entry sebelumnya jika ini retry
+    if (result.retry > 0) {
+      const existingIdx = this.results.findIndex(r => r.title === test.title && r.suite === (test.parent ? test.parent.title : ''));
+      if (existingIdx !== -1) this.results.splice(existingIdx, 1);
+    }
     const lines = [];
     if (result.stdout) {
       result.stdout.forEach(chunk => {
@@ -34,9 +41,10 @@ class DetailedReporter {
     const tanggal = this.startTime.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const waktu   = this.startTime.toLocaleTimeString('id-ID');
     const env     = process.env.TEST_ENV === 'production' ? 'Production' : 'Staging';
-    const baseURL = process.env.TEST_ENV === 'production'
-      ? 'frankandcojewellery.com'
-      : 'staging.intra.frankandcojewellery.com';
+    // Deteksi brand dari baseURL
+    const rawBase = process.env.BASE_URL || process.env.PLAYWRIGHT_BASE_URL || '';
+    let baseURL = rawBase.replace('https://', '').replace('http://', '') || 
+      (process.env.TEST_ENV === 'production' ? 'frankandcojewellery.com' : 'staging.intra.frankandcojewellery.com');
     const isPass  = failed === 0;
 
     // ── Group results by suite ──────────────────────────────────────────────
@@ -228,7 +236,8 @@ class DetailedReporter {
 
     // ── Write files ─────────────────────────────────────────────────────────
     fs.writeFileSync('qa-report.html', html);
-    fs.writeFileSync('/tmp/qa_email_body.html', html);
+    fs.writeFileSync('qa_email_body.html', html);
+    try { fs.writeFileSync('/tmp/qa_email_body.html', html); } catch (e) { /* ignore on GitHub Actions */ }
 
     // ── Plain text fallback ─────────────────────────────────────────────────
     let text = 'CMK QA Automation Report\n';
@@ -246,7 +255,8 @@ class DetailedReporter {
         if (err) text += '         ' + err + '\n';
       });
     }
-    fs.writeFileSync('/tmp/qa_email_body.txt', text);
+    try { fs.writeFileSync('/tmp/qa_email_body.txt', text); } catch (e) { /* ignore on GitHub Actions */ }
+    fs.writeFileSync('qa_email_body.txt', text);
     console.log('Report tersimpan: qa-report.html');
     console.log('Email HTML tersimpan: /tmp/qa_email_body.html');
   }
