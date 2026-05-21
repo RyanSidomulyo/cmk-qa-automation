@@ -1,0 +1,67 @@
+name: QA Automation — Mondial Production
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run QA tests Mondial Production
+        id: run_tests
+        run: TEST_ENV=production npx playwright test --project=mondial
+        continue-on-error: true
+
+      - name: Get email subject
+        id: summary
+        if: always()
+        run: |
+          STATUS="${{ steps.run_tests.outcome }}"
+          if [ "$STATUS" = "success" ]; then
+            echo "subject=[CMK QA] ✅ Test Passed - Mondial - $(date '+%Y-%m-%d')" >> $GITHUB_OUTPUT
+          else
+            echo "subject=[CMK QA] ❌ Test Failed - Mondial - $(date '+%Y-%m-%d')" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-mondial
+          path: |
+            playwright-report/
+            qa-report.html
+          retention-days: 7
+
+      - name: Send email notification
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.GMAIL_USER }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: ${{ steps.summary.outputs.subject }}
+          to: erzipaul25@gmail.com
+          from: sidomulyo784@gmail.com
+          html_body: file:///tmp/qa_email_body.html
+          convert_markdown: false
