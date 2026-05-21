@@ -7,6 +7,9 @@ const BASE_URLS = {
   frankco: ENV === 'production'
     ? 'https://frankandcojewellery.com'
     : 'https://staging.intra.frankandcojewellery.com',
+  mondial: ENV === 'production'
+    ? 'https://mondialjeweler.com'
+    : 'https://staging.intra.mondialjeweler.com',
 };
 
 console.log('Environment : ' + ENV.toUpperCase());
@@ -37,6 +40,11 @@ module.exports = defineConfig({
       name: 'frankco',
       use: { ...devices['Desktop Chrome'], baseURL: BASE_URLS.frankco },
       testMatch: ['**/ecomm/**/*.spec.js'],
+    },
+    {
+      name: 'mondial',
+      use: { ...devices['Desktop Chrome'], baseURL: BASE_URLS.mondial },
+      testMatch: ['**/mondial/**/*.spec.js'],
     },
   ],
 });

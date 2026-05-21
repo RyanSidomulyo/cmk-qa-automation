@@ -6,3 +6,6 @@ logs/
 /tmp/
 .env
 *.log
+qa_email_body.html
+qa_email_body.txt
+qa-report.html
