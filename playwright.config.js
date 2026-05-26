@@ -41,6 +41,7 @@ module.exports = defineConfig({
   },
   outputDir: 'test-results',
   projects: [
+    // Desktop
     {
       name: 'frankco',
       use: { ...devices['Desktop Chrome'], baseURL: BASE_URLS.frankco },
@@ -54,6 +55,22 @@ module.exports = defineConfig({
     {
       name: 'thepalace',
       use: { ...devices['Desktop Chrome'], baseURL: BASE_URLS.thepalace },
+      testMatch: ['**/thepalace/**/*.spec.js'],
+    },
+    // Mobile
+    {
+      name: 'frankco-mobile',
+      use: { ...devices['Pixel 5'], baseURL: BASE_URLS.frankco },
+      testMatch: ['**/ecomm/**/*.spec.js'],
+    },
+    {
+      name: 'mondial-mobile',
+      use: { ...devices['Pixel 5'], baseURL: BASE_URLS.mondial },
+      testMatch: ['**/mondial/**/*.spec.js'],
+    },
+    {
+      name: 'thepalace-mobile',
+      use: { ...devices['Pixel 5'], baseURL: BASE_URLS.thepalace },
       testMatch: ['**/thepalace/**/*.spec.js'],
     },
   ],
