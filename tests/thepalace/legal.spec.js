@@ -58,7 +58,8 @@ test.describe('Halaman Legal — The Palace', () => {
     await page.goto('/terms-condition', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForTimeout(500);
 
-    const breadcrumbLinks = await page.locator('div.container a[href]').all();
+    // breadcrumb spesifik: div dengan class uppercase text-xs tracking-wider di dalam container
+    const breadcrumbLinks = await page.locator('div.uppercase.flex.gap-2.items-center.text-xs a').all();
     console.log('  Breadcrumb links: ' + breadcrumbLinks.length);
     expect(breadcrumbLinks.length, 'Harus ada breadcrumb').toBeGreaterThan(0);
 
@@ -90,7 +91,8 @@ test.describe('Halaman Legal — The Palace', () => {
     await page.goto('/privacy-policies', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForTimeout(1000);
 
-    const heading = page.locator('h1, h2, h3').first();
+    // privacy-policies pakai h3 centered sebagai judul utama
+    const heading = page.locator('h3').filter({ hasText: 'Kebijakan Privasi' }).first();
     const headingVisible = await heading.isVisible().catch(() => false);
     const headingText = await heading.textContent().catch(() => '');
     console.log('  [' + (headingVisible ? 'OK' : 'GAGAL') + '] Heading: "' + headingText.trim() + '"');

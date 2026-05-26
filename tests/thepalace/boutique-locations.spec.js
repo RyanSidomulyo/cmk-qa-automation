@@ -39,6 +39,8 @@ test.describe('Lokasi Boutique — The Palace', () => {
     await page.goto('/location', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForTimeout(1000);
 
+    // waitFor supaya React selesai hydrate sebelum .all() dipanggil
+    await page.locator('div.container button.flex.w-full.items-center.justify-between').first().waitFor({ state: 'visible', timeout: 15000 });
     const regionButtons = await page.locator('div.container button.flex.w-full.items-center.justify-between').all();
     console.log('  Jumlah region ditemukan: ' + regionButtons.length);
     expect(regionButtons.length, 'Harus ada minimal 1 region').toBeGreaterThan(0);

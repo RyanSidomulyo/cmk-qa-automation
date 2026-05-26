@@ -82,11 +82,11 @@ test.describe('FAQ — The Palace', () => {
     expect(stateBefore, 'Accordion harus tertutup sebelum diklik').toBe('false');
 
     await firstTrigger.click();
-    await page.waitForTimeout(500);
 
+    // auto-wait sampai accordion benar-benar terbuka (animasi Radix selesai)
+    await expect(firstTrigger).toHaveAttribute('aria-expanded', 'true', { timeout: 5000 });
     const stateAfter = await firstTrigger.getAttribute('aria-expanded').catch(() => 'false');
     console.log('  aria-expanded setelah klik: ' + stateAfter);
-    expect(stateAfter, 'Accordion harus terbuka setelah diklik').toBe('true');
 
     const contentId = await firstTrigger.getAttribute('aria-controls').catch(() => '');
     if (contentId) {
