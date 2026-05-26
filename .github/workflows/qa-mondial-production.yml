@@ -28,7 +28,7 @@ jobs:
 
       - name: Run QA tests Mondial Production
         id: run_tests
-        run: TEST_ENV=production npx playwright test --project=mondial
+        run: TEST_ENV=production BRAND=mondial npx playwright test --project=mondial
         continue-on-error: true
 
       - name: Debug — check files

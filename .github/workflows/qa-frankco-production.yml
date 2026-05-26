@@ -1,4 +1,4 @@
-name: QA Automation — Production
+name: QA Automation — Frank & Co Production
 
 on:
   schedule:
@@ -28,7 +28,7 @@ jobs:
 
       - name: Run QA tests Production
         id: run_tests
-        run: TEST_ENV=production npx playwright test --project=frankco
+        run: TEST_ENV=production BRAND=frankco npx playwright test --project=frankco
         continue-on-error: true
 
       - name: Get email subject

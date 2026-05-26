@@ -9,7 +9,7 @@ LOG_FILE="logs/playwright_${TANGGAL}.log"
 
 echo "Test dimulai: $TANGGAL $WAKTU" >> "$LOG_FILE"
 
-npx playwright test --project=frankco >> "$LOG_FILE" 2>&1
+BRAND=frankco npx playwright test --project=frankco >> "$LOG_FILE" 2>&1
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -eq 0 ]; then

@@ -41,10 +41,17 @@ class DetailedReporter {
     const tanggal = this.startTime.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const waktu   = this.startTime.toLocaleTimeString('id-ID');
     const env     = process.env.TEST_ENV === 'production' ? 'Production' : 'Staging';
-    // Deteksi brand dari baseURL
+    // Deteksi brand dari env BRAND (di-set oleh GitHub Actions / cron script)
+    const brandKey = (process.env.BRAND || 'frankco').toLowerCase();
+    const BRAND_INFO = {
+      frankco:   { name: 'Frank & co.', prod: 'frankandcojewellery.com',  staging: 'staging.intra.frankandcojewellery.com' },
+      mondial:   { name: 'Mondial',     prod: 'mondialjeweler.com',       staging: 'staging.intra.mondialjeweler.com' },
+      thepalace: { name: 'The Palace',  prod: 'thepalacejeweler.com',     staging: 'staging.intra.thepalacejeweler.com' },
+    };
+    const brand = BRAND_INFO[brandKey] || BRAND_INFO.frankco;
     const rawBase = process.env.BASE_URL || process.env.PLAYWRIGHT_BASE_URL || '';
     let baseURL = rawBase.replace('https://', '').replace('http://', '') || 
-      (process.env.TEST_ENV === 'production' ? 'frankandcojewellery.com' : 'staging.intra.frankandcojewellery.com');
+      (process.env.TEST_ENV === 'production' ? brand.prod : brand.staging);
     const isPass  = failed === 0;
 
     // ── Group results by suite ──────────────────────────────────────────────
@@ -226,7 +233,7 @@ class DetailedReporter {
     </div>
     <div style="text-align:right;">
       <p style="margin:0;font-size:12px;color:#5F5E5A;">CMK QA Automation</p>
-      <p style="margin:0;font-size:13px;color:#5F5E5A;">Frank &amp; co. &middot; ${env}</p>
+      <p style="margin:0;font-size:13px;color:#5F5E5A;">${brand.name} &middot; ${env}</p>
     </div>
   </div>
 

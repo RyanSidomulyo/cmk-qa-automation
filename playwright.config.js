@@ -10,10 +10,15 @@ const BASE_URLS = {
   mondial: ENV === 'production'
     ? 'https://mondialjeweler.com'
     : 'https://staging.intra.mondialjeweler.com',
+  thepalace: ENV === 'production'
+    ? 'https://thepalacejeweler.com'
+    : 'https://staging.intra.thepalacejeweler.com',
 };
 
 console.log('Environment : ' + ENV.toUpperCase());
 console.log('Frank & Co  : ' + BASE_URLS.frankco);
+console.log('Mondial     : ' + BASE_URLS.mondial);
+console.log('The Palace  : ' + BASE_URLS.thepalace);
 
 module.exports = defineConfig({
   testDir: './tests',
@@ -45,6 +50,11 @@ module.exports = defineConfig({
       name: 'mondial',
       use: { ...devices['Desktop Chrome'], baseURL: BASE_URLS.mondial },
       testMatch: ['**/mondial/**/*.spec.js'],
+    },
+    {
+      name: 'thepalace',
+      use: { ...devices['Desktop Chrome'], baseURL: BASE_URLS.thepalace },
+      testMatch: ['**/thepalace/**/*.spec.js'],
     },
   ],
 });
