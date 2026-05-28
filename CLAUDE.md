@@ -15,6 +15,7 @@
 **Email contacts:**
 - Sender / staging recipient: `sidomulyo784@gmail.com`
 - Production recipient: `erzipaul25@gmail.com`
+- Additional production recipient: `hansen@centralmegakencana.com`
 
 **Komunikasi preference:** Bahasa Indonesia, concise, langsung action. Tidak perlu intro panjang.
 
@@ -34,7 +35,7 @@ CMK punya beberapa brand jewelry yang di-test:
 **Karakteristik per brand:**
 - Frank & Co: katalog jewelry, tidak ada e-commerce penuh
 - Mondial: high jewelry, brand premium
-- The Palace: **e-commerce penuh** (ada wishlist, cart, harga, product detail), URL produk `/product/[slug]` (singular)
+- The Palace: **e-commerce penuh** (ada wishlist, cart, harga, product detail, checkout), URL produk `/product/[slug]` (singular)
 
 ---
 
@@ -46,6 +47,8 @@ CMK punya beberapa brand jewelry yang di-test:
 - **CI/CD**: GitHub Actions (production), Mac cron (staging)
 - **Email**: msmtp (local), dawidd6/action-send-mail (GitHub Actions)
 - **Notification**: Email HTML report
+- **Uptime monitoring**: UptimeRobot (production 3 domain, notify ke 2 email)
+- **Error tracking**: Sentry (sudah terpasang di thepalacejeweler.com — lihat bagian Monitoring)
 
 ---
 
@@ -53,20 +56,22 @@ CMK punya beberapa brand jewelry yang di-test:
 
 ```
 /Users/ryansidomulyo/CMK/regress/
-├── playwright.config.js          # 3 projects: frankco, mondial, thepalace
-├── reporter.js                   # HTML email reporter (brand-aware)
+├── playwright.config.js               # 3 projects: frankco, mondial, thepalace
+├── reporter.js                        # HTML email reporter (brand-aware)
 ├── package.json
 ├── .github/
 │   └── workflows/
 │       ├── qa-frankco-production.yml      # Frank & Co prod (tiap jam)
 │       ├── qa-mondial-production.yml      # Mondial prod (tiap jam)
-│       └── qa-thepalace-production.yml    # The Palace prod (PENDING)
-├── run_tests.sh                              # Frank & Co staging cron
-├── run_tests_frankco_production.sh           # Legacy (disabled)
+│       └── qa-thepalace-production.yml    # The Palace prod (tiap jam)
+├── run_tests.sh                           # Frank & Co staging cron
+├── run_tests_mondial_staging.sh           # Mondial staging cron
+├── run_tests_thepalace_staging.sh         # The Palace staging cron
+├── run_tests_frankco_production.sh        # Legacy (disabled)
 └── tests/
     ├── ecomm/         # 13 Frank & Co specs
     ├── mondial/       # 7 Mondial specs
-    └── thepalace/     # 5 The Palace specs
+    └── thepalace/     # 10 The Palace specs
 ```
 
 ---
@@ -82,7 +87,7 @@ SELESAI ✅ Production + Staging
 SELESAI ✅ Production + Staging
 - navigation, high-jewelry, boutique-locations, contact-us, faq, terms, stories
 
-### The Palace (9 specs) — `tests/thepalace/`
+### The Palace (10 specs) — `tests/thepalace/`
 SELESAI ✅ Production + Staging
 - ✅ navigation.spec.js (6 tests)
 - ✅ collection.spec.js (7 tests)
@@ -93,6 +98,7 @@ SELESAI ✅ Production + Staging
 - ✅ faq.spec.js (4 tests)
 - ✅ about.spec.js (6 tests)
 - ✅ legal.spec.js (6 tests)
+- ✅ checkout.spec.js (5 tests) — E2E: login OTP → add to cart → cart drawer → info pengiriman → checkout
 
 ---
 
@@ -139,10 +145,39 @@ SELESAI ✅ Production + Staging
 | Schedule | Script | Brand | Env |
 |---|---|---|---|
 | `0 8 * * 1-5` | `run_tests.sh` | Frank & Co | Staging |
+| `30 8 * * 1-5` | `run_tests_mondial_staging.sh` | Mondial | Staging |
+| `0 9 * * 1-5` | `run_tests_thepalace_staging.sh` | The Palace | Staging |
 
 **Disabled (legacy):** `run_tests_frankco_production.sh` — duplikat dengan GitHub Actions
 
-Semua cron sudah aktif.
+---
+
+## 🔍 External Monitoring
+
+### UptimeRobot (uptime monitoring — production)
+- **Monitor**: `https://thepalacejeweler.com`, `https://frankandcojewellery.com`, `https://mondialjeweler.com`
+- **Interval**: 5 menit
+- **Notifikasi**: `hansen@centralmegakencana.com` + `erzipaul25@gmail.com`
+- **Catatan**: Staging `.intra.` tidak bisa dimonitor UptimeRobot (private network) — gunakan Playwright cron untuk staging
+
+### Sentry (JavaScript error tracking)
+- **Status**: Sudah terpasang di `thepalacejeweler.com` oleh developer
+- **Endpoint**: `/sentry-tunnel` (proxy untuk bypass ad-blocker)
+- **Organization ID**: `4510033077010432`
+- **Project ID**: `4510033089855488`
+- **Region**: US
+- **Akses dashboard**: Minta invite dari developer ke `sentry.io`
+- **Catatan**: Sentry dipasang di source code website (bukan Playwright). QA perlu akses dashboard untuk lihat error dan setup alert.
+
+---
+
+## 🔐 Test Accounts
+
+### The Palace Staging
+- **Nomor HP**: `82291349125` (tanpa leading 0, karena form sudah tampilkan `+62`)
+- **OTP**: Auto-terisi di staging (tidak perlu input manual)
+- **Alamat tersimpan**: "rumah | budi" — Makassar
+- **Dipakai di**: `checkout.spec.js`
 
 ---
 
@@ -169,9 +204,89 @@ const expanded = await filterBtn.getAttribute('aria-expanded'); // 'true' kalau 
 const cards = await page.locator('a[href^="/article/"]').all();
 ```
 
+**Cart icon di navigasi (The Palace):**
+```javascript
+const cartBtn = page.locator('button[aria-label="Shopping cart"]').first();
+// Ada 2 cart button (desktop + mobile), pakai .first()
+```
+
+**Cart drawer:**
+```javascript
+const cartDrawer = page.locator('[data-slot="sheet-content"]');
+await cartDrawer.waitFor({ state: 'visible', timeout: 15000 });
+```
+
+**Add to cart button (The Palace product detail):**
+```javascript
+// Ada 2 button (desktop hidden md:flex + mobile md:hidden), .first() ambil desktop
+const addToCartBtn = page.locator('button[data-slot="button"]')
+  .filter({ hasText: 'Masukan ke Keranjang' }).first();
+```
+
 **Product detail URL pattern:**
 - The Palace: `/product/[slug]` (singular)
 - Frank & Co: `/products/[slug]` (plural)
+
+### E2E Test Patterns (The Palace checkout)
+
+**Login dengan OTP staging:**
+```javascript
+// Phone tanpa leading 0 karena form sudah tampilkan +62
+const PHONE = '82291349125';
+
+// OTP auto-terisi di staging
+await page.waitForFunction(() => {
+  const inputs = document.querySelectorAll('input[maxlength="1"]');
+  return inputs.length === 6 && Array.from(inputs).every(el => el.value.length > 0);
+}, { timeout: 30000 });
+await page.locator('button[data-slot="button"]').filter({ hasText: 'Kirim' }).click();
+```
+
+**StorageState untuk berbagi sesi antar test:**
+```javascript
+const STORAGE_PATH = '/tmp/thepalace-checkout-auth.json';
+
+// Pastikan file ada sebelum test.use() dibaca
+if (!fs.existsSync(STORAGE_PATH)) {
+  fs.writeFileSync(STORAGE_PATH, JSON.stringify({ cookies: [], origins: [] }));
+}
+
+// Login sekali di beforeAll, reuse di semua test
+test.beforeAll(async ({ browser }) => {
+  const isValid = fs.existsSync(STORAGE_PATH) &&
+    (Date.now() - fs.statSync(STORAGE_PATH).mtimeMs) < 15 * 60 * 1000 &&
+    JSON.parse(fs.readFileSync(STORAGE_PATH, 'utf8')).cookies?.length > 0;
+  if (!isValid) {
+    // do login, save state
+    await context.storageState({ path: STORAGE_PATH });
+  }
+});
+test.use({ storageState: STORAGE_PATH });
+```
+
+**Serial mode untuk E2E yang butuh shared state:**
+```javascript
+test.describe.configure({ mode: 'serial' });
+// Mencegah: parallel tests login bersamaan → rate limit OTP staging
+```
+
+**Cart drawer tidak selalu auto-buka — fallback ke cart icon:**
+```javascript
+await addToCartBtn.click();
+await page.waitForTimeout(2000);
+const isAutoOpen = await cartDrawer.isVisible().catch(() => false);
+if (!isAutoOpen) {
+  // Buka manual via cart icon
+  await page.locator('button[aria-label="Shopping cart"]').first().click();
+}
+await cartDrawer.waitFor({ state: 'visible', timeout: 15000 });
+```
+
+**Submit button yang ambigu di login page:**
+```javascript
+// Ada 2 button[type="submit"] (login form + gold price widget)
+await page.locator('button[type="submit"]').filter({ hasText: 'Masuk' }).click();
+```
 
 ### waitUntil convention
 - **STAGING**: `'networkidle'` boleh dipakai (lebih stabil)
@@ -179,7 +294,7 @@ const cards = await page.locator('a[href^="/article/"]').all();
 
 ### Timeout convention
 - Test setup default: `test.setTimeout(180000)` (3 menit)
-- Test berat (cek banyak halaman): `test.setTimeout(120000)` minimal
+- Test E2E (banyak step): `test.setTimeout(180000)` wajib
 - `page.goto` timeout: 30-60 detik
 
 ### Reporter behavior
@@ -214,7 +329,7 @@ Reporter otomatis catat error message ke section "Yang perlu diperhatikan" di em
 npx playwright test --project=thepalace --headed
 
 # Run 1 spec specific
-npx playwright test tests/thepalace/article.spec.js --project=thepalace --headed
+npx playwright test tests/thepalace/checkout.spec.js --project=thepalace --headed
 
 # Run dengan grep (sub-set test)
 npx playwright test --project=thepalace --grep "Gambar"
@@ -249,24 +364,26 @@ crontab -e       # edit cron
 ### Phase 2: DMS Admin Testing
 - Login, role-based access, create product, edit harga, publish artikel
 
-### Phase 3: Quality Improvements (priority order)
-1. ~~**UptimeRobot setup**~~ ✅ SELESAI
-2. **Sentry untuk error tracking real-time** (gratis tier)
-3. **API testing** pakai Playwright API mode (`request.get/post`)
-4. **Lighthouse CI** untuk performance regression
-5. **Visual regression** pakai Playwright `toHaveScreenshot()`
-6. **Mobile viewport testing** (Pixel 5, iPhone 13)
-7. **E2E user journey** (3-5 critical path per brand)
+### Phase 3: Quality Improvements
+1. ~~**UptimeRobot setup**~~ ✅ SELESAI — 3 monitor production, notify 2 email
+2. **Sentry dashboard access** — Sudah terpasang di website, perlu minta akses dari developer
+3. ~~**API testing**~~ — Skip (butuh identifikasi endpoint via DevTools, low priority)
+4. ~~**E2E user journey The Palace**~~ ✅ SELESAI — checkout.spec.js (login → cart → checkout)
+5. **GA4 filter Playwright traffic** — Playwright pakai real Chromium, perlu di-exclude di GA4
+6. **Lighthouse CI** untuk performance regression
+7. **Visual regression** pakai Playwright `toHaveScreenshot()`
+8. **Mobile viewport testing** (Pixel 5, iPhone 13) — di-skip karena effort tinggi
+9. **E2E user journey Frank & Co & Mondial** — belum ada (tidak ada e-commerce penuh)
 
 ### Coverage Reality Check
-Saat ini coverage ~20-25% dari ideal. Yang BELUM ter-cover:
+Saat ini coverage ~30% dari ideal. Yang BELUM ter-cover:
 - API/backend health
 - Cross-browser testing
-- Performance
+- Performance (Lighthouse)
 - Accessibility
 - Security
 - Data integrity (harga konsisten list vs detail)
-- Real-time monitoring
+- GA4 analytics quality (Playwright traffic tidak di-filter)
 
 ---
 
@@ -275,12 +392,18 @@ Saat ini coverage ~20-25% dari ideal. Yang BELUM ter-cover:
 | Decision | Rationale | Date |
 |---|---|---|
 | Pakai Playwright (bukan Cypress/Selenium) | Multi-browser, fast, auto-wait, modern syntax | Awal project |
-| GitHub Actions untuk production (bukan Mac cron) | Reliability 24/7, tidak depend on Mac | Recent |
-| Mac cron HANYA untuk staging | Backup yang tidak critical, hemat resource | Recent |
-| Pertahankan test yang fail untuk bug real | Email setiap run = reminder ke tim CMS/Dev | Recent |
-| Threshold gold price: max 1 hari kemarin | Toleransi weekend/libur | Recent |
-| Pakai `domcontentloaded` untuk production | `networkidle` timeout karena polling script di prod | Recent |
-| Brand-aware reporter via env `BRAND` | 1 reporter handle semua brand, konsisten footer | Recent |
+| GitHub Actions untuk production (bukan Mac cron) | Reliability 24/7, tidak depend on Mac | Mei 2026 |
+| Mac cron HANYA untuk staging | Backup yang tidak critical, hemat resource | Mei 2026 |
+| Pertahankan test yang fail untuk bug real | Email setiap run = reminder ke tim CMS/Dev | Mei 2026 |
+| Threshold gold price: max 1 hari kemarin | Toleransi weekend/libur | Mei 2026 |
+| Pakai `domcontentloaded` untuk production | `networkidle` timeout karena polling script di prod | Mei 2026 |
+| Brand-aware reporter via env `BRAND` | 1 reporter handle semua brand, konsisten footer | Mei 2026 |
+| UptimeRobot HANYA untuk production | Staging pakai `.intra.` = private network, tidak bisa diakses dari luar | Mei 2026 |
+| Skip Sentry setup dari sisi QA | Sentry sudah terpasang oleh developer, QA cukup minta akses dashboard | Mei 2026 |
+| E2E checkout pakai `storageState` + `beforeAll` | Login 1x untuk semua test — hindari rate limit OTP staging saat parallel run | Mei 2026 |
+| E2E test pakai `mode: 'serial'` | Mencegah parallel login ke akun yang sama → rate limit OTP staging | Mei 2026 |
+| Fallback buka cart via cart icon (bukan auto-open) | Cart drawer tidak selalu auto-buka setelah add to cart | Mei 2026 |
+| Mobile viewport di-skip | Selector desktop-only, effort fix terlalu tinggi untuk nilai yang didapat | Mei 2026 |
 
 ---
 
@@ -309,8 +432,11 @@ Contoh format console log standar:
 4. **Brand-aware**: setiap run production, set `BRAND=<brand>` env
 5. **File output di workspace** — bukan `/tmp/` saja (GitHub Actions tidak punya `/tmp/`)
 6. **Komunikasi**: Bahasa Indonesia, concise, langsung ke action
+7. **E2E test The Palace**: gunakan `storageState` + `beforeAll` + `mode: 'serial'` — jangan login di tiap test
+8. **Phone number untuk login staging**: `82291349125` (TANPA leading 0) — form sudah tampilkan `+62`
+9. **Cart drawer tidak auto-buka** setelah add to cart — selalu sediakan fallback klik cart icon
 
 ---
 
 *Last updated: 28 Mei 2026*
-*Generated dari conversation history Claude.ai*
+*Generated dari conversation history Claude Code*
