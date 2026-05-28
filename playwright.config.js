@@ -20,10 +20,22 @@ console.log('Frank & Co  : ' + BASE_URLS.frankco);
 console.log('Mondial     : ' + BASE_URLS.mondial);
 console.log('The Palace  : ' + BASE_URLS.thepalace);
 
+// Production: 2 retries (bug nyata gagal 2x; flaky network di-absorb)
+// Staging:    1 retry  (lebih cepat feedback, flake lebih ditoleransi manual)
+const RETRIES = ENV === 'production' ? 2 : 1;
+
+// Custom user agent untuk identifikasi traffic Playwright di GA4.
+// Cara filter di GA4:
+//   Admin → Data Settings → Data Filters → Create filter
+//   Filter name: Exclude Playwright QA
+//   Filter operation: Exclude
+//   Parameter: user_agent  Contains  "PlaywrightQA"
+const PLAYWRIGHT_UA_SUFFIX = ' PlaywrightQA/1.0 (+cmk-qa-automation)';
+
 module.exports = defineConfig({
   testDir: './tests',
   fullyParallel: true,
-  retries: 1,
+  retries: RETRIES,
   workers: 4,
   reporter: [
     [require.resolve('./reporter.js')],
@@ -38,6 +50,10 @@ module.exports = defineConfig({
     actionTimeout:     15000,
     navigationTimeout: 30000,
     ignoreHTTPSErrors: true,
+    // Append marker ke default Chromium UA (jangan replace, supaya tetap valid Chrome).
+    userAgent:
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
+      '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' + PLAYWRIGHT_UA_SUFFIX,
   },
   outputDir: 'test-results',
   projects: [
