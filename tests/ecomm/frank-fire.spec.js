@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { waitForValidPage } = require('../helpers/page-checker');
 
 test.setTimeout(120000);
 
@@ -130,19 +131,23 @@ test.describe('Frank Fire page — functional test', () => {
       await card.evaluate(el => el.scrollIntoView({ block: 'center' }));
       await page.waitForTimeout(300);
 
+      const before = { title: await page.title(), url: page.url() };
+
       await Promise.all([
         page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => null),
         viewDetailBtn.click({ force: true }),
       ]);
 
-      await page.waitForTimeout(500);
-      const valid = await isPageValid(page);
-      const title = await page.title();
-      const url = page.url();
+      const result = await waitForValidPage(page, {
+        fromTitle: before.title,
+        fromUrl: before.url,
+        timeout: 15000,
+      });
 
-      console.log('    [' + (valid ? 'OK' : 'GAGAL') + '] ' + title);
-      console.log('    URL: ' + url);
-      results.push({ name: productName, url: url, valid: valid });
+      console.log('    [' + (result.valid ? 'OK' : 'GAGAL') + '] ' + result.title);
+      console.log('    URL: ' + result.url);
+      if (!result.valid) console.log('    Reason: ' + result.reason);
+      results.push({ name: productName, url: result.url, valid: result.valid, reason: result.reason });
 
       await page.setViewportSize({ width: 1280, height: 800 });
       await page.goto(PAGE_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -152,7 +157,7 @@ test.describe('Frank Fire page — functional test', () => {
 
     const failed = results.filter(function(r) { return !r.valid; });
     if (failed.length > 0) {
-      const detail = failed.map(function(f) { return '  x "' + f.name + '" -> ' + f.url; }).join('\n');
+      const detail = failed.map(function(f) { return '  x "' + f.name + '" -> ' + f.url + ' (' + f.reason + ')'; }).join('\n');
       throw new Error('Ada product card yang gagal:\n' + detail);
     }
 

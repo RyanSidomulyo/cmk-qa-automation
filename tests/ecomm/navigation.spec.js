@@ -1,32 +1,32 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { waitForValidPage, isTitleValid, HOMEPAGE_TITLE } = require('../helpers/page-checker');
 
 const NAV_SELECTOR = '.flex.gap-8.justify-center';
 
 // Tambah timeout untuk staging yang lambat
 test.setTimeout(300000);
 
-async function getPageStatus(page) {
-  await page.waitForLoadState('domcontentloaded').catch(() => {});
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {{ fromTitle?: string|null, fromUrl?: string|null, timeout?: number }} [options]
+ */
+async function getPageStatus(page, options = {}) {
+  // Pakai waitForValidPage supaya tahan race condition Next.js client routing
+  const res = await waitForValidPage(page, {
+    fromTitle: options.fromTitle ?? null,
+    fromUrl: options.fromUrl ?? null,
+    timeout: options.timeout ?? 12000,
+  });
 
-  const title = await page.title().catch(() => '');
-  const url   = page.url();
-
-  // Homepage title Frank & co — muncul saat Next.js redirect ke home karena 404
-  const HOMEPAGE_TITLE = 'Frank & co. | Natural Diamond Jewellery, Fashion Collections, and Gifts';
-
-  // Deteksi 404 dari title saja — TIDAK dari body text (CSR belum tentu selesai)
-  const titleIs404 =
-    title === '404. Page not found' ||
-    title === '404 Not Found'       ||
-    title.startsWith('404')         ||
-    title.trim() === ''             ||
-    title === HOMEPAGE_TITLE;
-
-  const flag   = titleIs404 ? '404' : 'OK';
-  const reason = titleIs404 ? 'Halaman tidak ditemukan (title: ' + title + ')' : '';
-
-  return { url, flag, reason, title, is404: flag !== 'OK' };
+  const flag = res.valid ? 'OK' : '404';
+  return {
+    url: res.url,
+    flag,
+    reason: res.reason,
+    title: res.title,
+    is404: !res.valid,
+  };
 }
 
 async function goHome(page) {
