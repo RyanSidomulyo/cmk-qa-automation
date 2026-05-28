@@ -1,5 +1,5 @@
 // @ts-check
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('../helpers/fixtures');
 const { waitForValidPage } = require('../helpers/page-checker');
 
 test.setTimeout(120000);

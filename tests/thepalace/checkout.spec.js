@@ -1,7 +1,6 @@
 // @ts-check
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('../helpers/fixtures');
 const fs = require('fs');
-const { attachApiMonitor } = require('../helpers/api-monitor');
 
 test.setTimeout(180000);
 
@@ -96,27 +95,6 @@ test.describe('E2E User Journey — The Palace', () => {
   });
 
   test.use({ storageState: STORAGE_PATH });
-
-  // API smoke monitor — dengar response di setiap test, fail kalau ada 5xx
-  // pada endpoint /api/, /graphql, atau /_next/data/.
-  // Ignore otomatis: Sentry, GA, GTM, asset statis. Tambah pattern di sini
-  // kalau ada false positive yang sah (mis. endpoint pihak ketiga yang
-  // memang sering 5xx tapi non-critical).
-  test.beforeEach(async ({ page }, testInfo) => {
-    testInfo.apiMon = attachApiMonitor(page, testInfo, {
-      ignorePatterns: [
-        // Tambah pattern di sini kalau muncul false positive
-      ],
-    });
-  });
-
-  test.afterEach(async ({}, testInfo) => {
-    // Hanya assert kalau test utama lulus. Kalau test sudah fail, jangan
-    // timpa error message — biar root cause asli tetap kelihatan.
-    if (testInfo.status === testInfo.expectedStatus) {
-      testInfo.apiMon?.assertClean();
-    }
-  });
 
   test('Sesi login aktif', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 60000 });

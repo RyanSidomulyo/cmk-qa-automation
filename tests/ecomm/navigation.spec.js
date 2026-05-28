@@ -1,5 +1,5 @@
 // @ts-check
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('../helpers/fixtures');
 const { waitForValidPage, isTitleValid, HOMEPAGE_TITLE } = require('../helpers/page-checker');
 
 const NAV_SELECTOR = '.flex.gap-8.justify-center';
