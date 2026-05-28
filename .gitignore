@@ -9,3 +9,5 @@ logs/
 qa_email_body.html
 qa_email_body.txt
 qa-report.html
+qa_state.json
+prev_qa_state.json

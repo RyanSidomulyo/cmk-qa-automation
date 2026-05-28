@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CMK QA Dashboard</title>
+<style>
+  :root {
+    --bg: #F8F6F0;
+    --card: #FFFFFF;
+    --text: #2C2C2A;
+    --muted: #5F5E5A;
+    --accent: #0F6E56;
+    --accent-light: #E1F5EE;
+    --danger: #A32D2D;
+    --danger-light: #FCEBEB;
+    --warn: #B8800F;
+    --warn-light: #FBF3DC;
+    --border: #E5E1D6;
+    --code-bg: #1E1E1E;
+    --code-text: #E4E4E4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 24px;
+    line-height: 1.5;
+  }
+  header {
+    max-width: 1200px;
+    margin: 0 auto 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  h1 { margin: 0; font-size: 24px; }
+  .subtitle { color: var(--muted); font-size: 13px; }
+  main { max-width: 1200px; margin: 0 auto; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .card h2 {
+    margin: 0 0 12px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-weight: 500;
+  }
+  .badge.idle    { background: #F1EFE8; color: var(--muted); }
+  .badge.running { background: var(--warn-light); color: var(--warn); }
+  .badge.passed  { background: var(--accent-light); color: var(--accent); }
+  .badge.failed  { background: var(--danger-light); color: var(--danger); }
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  select, button {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: white;
+    font-size: 14px;
+    margin-bottom: 10px;
+    font-family: inherit;
+  }
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: opacity 0.15s;
+  }
+  button:hover:not(:disabled) { opacity: 0.9; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.stop { background: var(--danger); }
+  button.secondary {
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; margin-bottom: 0; }
+  .last-run {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .log-panel {
+    background: var(--code-bg);
+    color: var(--code-text);
+    border-radius: 10px;
+    padding: 16px;
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 12px;
+    height: 400px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .log-header h3 { margin: 0; font-size: 14px; }
+  .log-empty { color: #777; font-style: italic; }
+  .log-line { display: block; }
+  .log-line.err { color: #FF8B8B; }
+  .log-line.ok { color: #8BFFB3; }
+  .log-line.warn { color: #FFD78B; }
+  .history {
+    margin-top: 24px;
+  }
+  .history table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .history th, .history td {
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .history th {
+    background: #F1EFE8;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .history tr:last-child td { border-bottom: none; }
+  .footer-links {
+    margin-top: 16px;
+    display: flex;
+    gap: 12px;
+    font-size: 13px;
+  }
+  .footer-links a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .footer-links a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>CMK QA Dashboard</h1>
+    <div class="subtitle">Manual trigger Playwright automation · 3 brand</div>
+  </div>
+  <div class="footer-links">
+    <a href="/report" target="_blank">Report terakhir →</a>
+    <a href="/playwright-report" target="_blank">Playwright report →</a>
+  </div>
+</header>
+
+<main>
+  <div class="grid" id="brand-cards"></div>
+
+  <div class="log-header">
+    <h3>Live Log</h3>
+    <div>
+      <span id="log-meta" class="subtitle"></span>
+    </div>
+  </div>
+  <div class="log-panel" id="log-panel">
+    <div class="log-empty">Pilih brand & klik Run untuk mulai. Log akan muncul di sini.</div>
+  </div>
+
+  <section class="history">
+    <h3>Riwayat run (max 20)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Waktu</th>
+          <th>Brand</th>
+          <th>Env</th>
+          <th>Spec</th>
+          <th>Durasi</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="history-body">
+        <tr><td colspan="6" class="subtitle" style="text-align:center;">Belum ada riwayat run.</td></tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+
+<script>
+  const $ = (sel) => document.querySelector(sel);
+  const cardsEl = $('#brand-cards');
+  const logPanel = $('#log-panel');
+  const logMeta = $('#log-meta');
+  const historyBody = $('#history-body');
+
+  let config = null;
+  let currentStream = null;
+  let currentStreamId = null;
+
+  function fmtTime(iso) {
+    if (!iso) return '-';
+    const d = new Date(iso);
+    return d.toLocaleString('id-ID', { hour12: false });
+  }
+
+  function fmtDuration(startedAt, endedAt) {
+    if (!startedAt || !endedAt) return '-';
+    const sec = Math.round((new Date(endedAt) - new Date(startedAt)) / 1000);
+    if (sec < 60) return sec + 's';
+    return Math.floor(sec / 60) + 'm ' + (sec % 60) + 's';
+  }
+
+  function clearLogs() {
+    logPanel.innerHTML = '';
+    logMeta.textContent = '';
+  }
+
+  function appendLog(line) {
+    const el = document.createElement('span');
+    el.className = 'log-line';
+    if (/\b(fail|error|✘|❌)/i.test(line)) el.classList.add('err');
+    else if (/\b(passed|✓|✅|ok)\b/i.test(line)) el.classList.add('ok');
+    else if (/\b(warn|skip|—)\b/i.test(line)) el.classList.add('warn');
+    el.textContent = line;
+    logPanel.appendChild(el);
+    logPanel.appendChild(document.createTextNode('\n'));
+    logPanel.scrollTop = logPanel.scrollHeight;
+  }
+
+  function streamRun(id, brand) {
+    if (currentStream) currentStream.close();
+    clearLogs();
+    logMeta.textContent = `Streaming ${brand} (id=${id})`;
+    currentStreamId = id;
+    const es = new EventSource(`/api/stream/${id}`);
+    currentStream = es;
+    es.addEventListener('log', (ev) => {
+      try { appendLog(JSON.parse(ev.data).line); } catch {}
+    });
+    es.addEventListener('end', (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        appendLog(`\n=== Selesai: status=${data.status || 'unknown'} exitCode=${data.exitCode ?? '-'} ===`);
+      } catch {}
+      es.close();
+      refreshStatus();
+    });
+    es.addEventListener('error', () => {
+      es.close();
+    });
+  }
+
+  async function startRun(brand) {
+    const envSel  = document.getElementById(`env-${brand}`);
+    const specSel = document.getElementById(`spec-${brand}`);
+    const body = { brand, env: envSel.value, spec: specSel.value || undefined };
+    const r = await fetch('/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (!data.ok) {
+      alert('Gagal start: ' + data.error);
+      return;
+    }
+    refreshStatus();
+    setTimeout(() => streamRun(data.id, brand), 300);
+  }
+
+  async function stopRun(brand) {
+    if (!confirm(`Stop run untuk ${brand}?`)) return;
+    await fetch(`/api/stop/${brand}`, { method: 'POST' });
+    refreshStatus();
+  }
+
+  function renderCards(status) {
+    cardsEl.innerHTML = '';
+    config.brands.forEach((b) => {
+      const run = status.runs[b.id];
+      const isRunning = !!run;
+      const specs = config.specs[b.id] || [];
+      const badgeClass = isRunning ? 'running' : 'idle';
+      const badgeText = isRunning ? `RUNNING (${run.env})` : 'IDLE';
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <h2>${b.label} <span class="badge ${badgeClass}">${badgeText}</span></h2>
+        <label>Environment</label>
+        <select id="env-${b.id}" ${isRunning ? 'disabled' : ''}>
+          ${config.envs.map((e) => `<option value="${e}">${e}</option>`).join('')}
+        </select>
+        <label>Spec (kosong = all)</label>
+        <select id="spec-${b.id}" ${isRunning ? 'disabled' : ''}>
+          <option value="">— semua spec —</option>
+          ${specs.map((s) => `<option value="${s}">${s.split('/').pop()}</option>`).join('')}
+        </select>
+        <div class="row">
+          ${isRunning
+            ? `<button class="stop" onclick="stopRun('${b.id}')">Stop</button>
+               <button class="secondary" onclick="streamRun('${run.id}','${b.id}')">Tail log</button>`
+            : `<button onclick="startRun('${b.id}')">▶ Run</button>`}
+        </div>
+        ${isRunning ? `
+          <div class="last-run">
+            Dimulai: ${fmtTime(run.startedAt)}<br>
+            Spec: ${run.spec || '(all)'}
+          </div>
+        ` : ''}
+      `;
+      cardsEl.appendChild(card);
+    });
+  }
+
+  function renderHistory(history) {
+    if (!history || history.length === 0) {
+      historyBody.innerHTML = '<tr><td colspan="6" class="subtitle" style="text-align:center;">Belum ada riwayat run.</td></tr>';
+      return;
+    }
+    historyBody.innerHTML = history.map((h) => `
+      <tr>
+        <td>${fmtTime(h.startedAt)}</td>
+        <td>${h.brand}</td>
+        <td>${h.env}</td>
+        <td>${h.spec ? h.spec.split('/').pop() : '<em>all</em>'}</td>
+        <td>${fmtDuration(h.startedAt, h.endedAt)}</td>
+        <td><span class="badge ${h.status}">${h.status.toUpperCase()}</span></td>
+      </tr>
+    `).join('');
+  }
+
+  async function refreshStatus() {
+    const r = await fetch('/api/status');
+    const data = await r.json();
+    renderCards(data);
+    renderHistory(data.history);
+  }
+
+  async function bootstrap() {
+    config = await fetch('/api/config').then((r) => r.json());
+    await refreshStatus();
+    // Poll status tiap 5 detik (lightweight)
+    setInterval(refreshStatus, 5000);
+  }
+
+  window.startRun = startRun;
+  window.stopRun = stopRun;
+  window.streamRun = streamRun;
+
+  bootstrap();
+</script>
+
+</body>
+</html>
