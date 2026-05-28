@@ -57,18 +57,23 @@ CMK punya beberapa brand jewelry yang di-test:
 ```
 /Users/ryansidomulyo/CMK/regress/
 ├── playwright.config.js               # 3 projects: frankco, mondial, thepalace
-├── reporter.js                        # HTML email reporter (brand-aware)
+├── reporter.js                        # HTML email reporter (brand-aware) + qa_state.json
 ├── package.json
+├── scripts/
+│   └── should_send_email.sh           # Email dedup decision (shared 3 brand workflows)
 ├── .github/
 │   └── workflows/
-│       ├── qa-frankco-production.yml      # Frank & Co prod (tiap jam)
-│       ├── qa-mondial-production.yml      # Mondial prod (tiap jam)
-│       └── qa-thepalace-production.yml    # The Palace prod (tiap jam)
+│       ├── qa-frankco-production.yml      # Frank & Co prod (tiap jam, dedup aktif)
+│       ├── qa-mondial-production.yml      # Mondial prod (tiap jam, dedup aktif)
+│       └── qa-thepalace-production.yml    # The Palace prod (tiap jam, dedup aktif)
 ├── run_tests.sh                           # Frank & Co staging cron
 ├── run_tests_mondial_staging.sh           # Mondial staging cron
 ├── run_tests_thepalace_staging.sh         # The Palace staging cron
 ├── run_tests_frankco_production.sh        # Legacy (disabled)
 └── tests/
+    ├── helpers/
+    │   ├── page-checker.js                # Validasi halaman tidak 404/error
+    │   └── api-monitor.js                 # API smoke monitor (opt-in per spec)
     ├── ecomm/         # 13 Frank & Co specs
     ├── mondial/       # 7 Mondial specs
     └── thepalace/     # 10 The Palace specs
@@ -292,10 +297,44 @@ await page.locator('button[type="submit"]').filter({ hasText: 'Masuk' }).click()
 - **STAGING**: `'networkidle'` boleh dipakai (lebih stabil)
 - **PRODUCTION**: SELALU pakai `'domcontentloaded'` (production punya script polling/widget yang bikin networkidle timeout)
 
+### Retries convention
+Di-set otomatis di `playwright.config.js` berdasarkan env:
+- **PRODUCTION**: `retries: 2` — bug nyata gagal 2x, flake network ter-absorb
+- **STAGING**: `retries: 1` — feedback cepat, flake ditoleransi manual
+
+### User Agent convention
+Default UA Chromium di-append marker `PlaywrightQA/1.0` (di-set di `playwright.config.js`).
+- Tujuan: filter traffic Playwright di GA4 supaya tidak polusi data analytics
+- Setup GA4 filter: Admin → Data Settings → Data Filters → Exclude `user_agent contains "PlaywrightQA"`
+
 ### Timeout convention
 - Test setup default: `test.setTimeout(180000)` (3 menit)
 - Test E2E (banyak step): `test.setTimeout(180000)` wajib
 - `page.goto` timeout: 30-60 detik
+
+### API Smoke Monitor
+Helper `tests/helpers/api-monitor.js` — pasif dengar response, fail kalau ada 5xx
+di endpoint `/api/`, `/graphql`, `/_next/data/`. Auto-ignore Sentry/GA/GTM/asset.
+
+**Cara pakai (opt-in per spec):**
+```javascript
+const { attachApiMonitor } = require('../helpers/api-monitor');
+
+test.beforeEach(async ({ page }, testInfo) => {
+  testInfo.apiMon = attachApiMonitor(page, testInfo);
+});
+test.afterEach(async ({}, testInfo) => {
+  // Hanya assert kalau test utama lulus (jangan timpa root cause asli)
+  if (testInfo.status === testInfo.expectedStatus) {
+    testInfo.apiMon?.assertClean();
+  }
+});
+```
+
+**Sudah aktif di:** `tests/thepalace/checkout.spec.js` (pilot)
+
+Tambah `ignorePatterns: [/regex/]` di `attachApiMonitor()` kalau ada false positive
+endpoint pihak ketiga yang non-critical.
 
 ### Reporter behavior
 File `reporter.js` brand-aware via env `BRAND`:
@@ -308,7 +347,28 @@ Output files (di workspace setelah run):
 - `qa-report.html` — full report
 - `qa_email_body.html` — buat GitHub Actions email
 - `qa_email_body.txt` — plain text fallback
+- `qa_state.json` — state untuk email dedup (status + failureHash + timestamp)
 - `/tmp/qa_email_body.html` — buat Mac cron
+
+### Email Deduplication (GitHub Actions production)
+Tiap workflow production sekarang pakai `scripts/should_send_email.sh` untuk
+suppress email duplikat. Logika:
+
+| Skenario | Aksi |
+|---|---|
+| First run / no cache state | SEND |
+| Status berubah (pass↔fail) | SEND (alert / recovery) |
+| Hash failure berubah (bug baru) | SEND |
+| Hash sama, < `MAX_QUIET_HOURS` (default 6 jam) | SKIP |
+| Hash sama, ≥ `MAX_QUIET_HOURS` | SEND (digest reminder) |
+
+**Mekanisme:**
+- `reporter.js` emit `qa_state.json` dengan SHA256 signature dari failure (title + 1st error line, di-normalize)
+- Workflow simpan state di GitHub Actions cache (`actions/cache@v4`)
+- Run berikutnya restore cache, bandingkan via `scripts/should_send_email.sh`
+- Field `lastEmailedAt` di-stamp HANYA saat email beneran terkirim → digest timer akurat
+
+**Tuning `MAX_QUIET_HOURS`:** edit di workflow YAML (env var) per brand bila perlu.
 
 ### Error message convention
 Saat test fail, error message **WAJIB include detail aktionable** untuk developer:
@@ -318,6 +378,8 @@ Saat test fail, error message **WAJIB include detail aktionable** untuk develope
 - Action item ("Cek data feed harga emas — kemungkinan stale")
 
 Reporter otomatis catat error message ke section "Yang perlu diperhatikan" di email.
+Error message juga jadi input failureHash — pastikan stabil antar run (jangan
+include timestamp/random ID; reporter sudah auto-normalize angka panjang).
 
 ---
 
@@ -367,13 +429,15 @@ crontab -e       # edit cron
 ### Phase 3: Quality Improvements
 1. ~~**UptimeRobot setup**~~ ✅ SELESAI — 3 monitor production, notify 2 email
 2. **Sentry dashboard access** — Sudah terpasang di website, perlu minta akses dari developer
-3. ~~**API testing**~~ — Skip (butuh identifikasi endpoint via DevTools, low priority)
+3. ~~**API testing**~~ ✅ SELESAI (pasif) — `api-monitor.js` helper, pilot di `checkout.spec.js`
 4. ~~**E2E user journey The Palace**~~ ✅ SELESAI — checkout.spec.js (login → cart → checkout)
-5. **GA4 filter Playwright traffic** — Playwright pakai real Chromium, perlu di-exclude di GA4
-6. **Lighthouse CI** untuk performance regression
-7. **Visual regression** pakai Playwright `toHaveScreenshot()`
-8. **Mobile viewport testing** (Pixel 5, iPhone 13) — di-skip karena effort tinggi
-9. **E2E user journey Frank & Co & Mondial** — belum ada (tidak ada e-commerce penuh)
+5. ~~**GA4 filter Playwright traffic**~~ ✅ SELESAI (sisi automation) — UA marker `PlaywrightQA/1.0` di-set; tinggal aktifkan filter di GA4 dashboard
+6. ~~**Email deduplication**~~ ✅ SELESAI — failureHash + cache, suppress noise saat bug menetap
+7. **Lighthouse CI** untuk performance regression
+8. **Visual regression** pakai Playwright `toHaveScreenshot()`
+9. **Mobile viewport testing** (Pixel 5, iPhone 13) — di-skip karena effort tinggi
+10. **E2E user journey Frank & Co & Mondial** — belum ada (tidak ada e-commerce penuh)
+11. **Rollout API monitor ke spec lain** — setelah pilot checkout stabil (navigation, product-category)
 
 ### Coverage Reality Check
 Saat ini coverage ~30% dari ideal. Yang BELUM ter-cover:
@@ -398,6 +462,10 @@ Saat ini coverage ~30% dari ideal. Yang BELUM ter-cover:
 | Threshold gold price: max 1 hari kemarin | Toleransi weekend/libur | Mei 2026 |
 | Pakai `domcontentloaded` untuk production | `networkidle` timeout karena polling script di prod | Mei 2026 |
 | Brand-aware reporter via env `BRAND` | 1 reporter handle semua brand, konsisten footer | Mei 2026 |
+| Retries: prod 2, staging 1 | Bug nyata gagal 2x; flake network ter-absorb di prod | Mei 2026 |
+| Marker `PlaywrightQA/1.0` di user agent | Filter traffic Playwright di GA4 supaya analytics bersih | Mei 2026 |
+| API smoke monitor pasif (helper) | Tambah coverage backend health tanpa spec API terpisah | Mei 2026 |
+| Email dedup via failureHash + cache | Reduce 72 email/hari → ~12 email/hari saat ada bug menetap | Mei 2026 |
 | UptimeRobot HANYA untuk production | Staging pakai `.intra.` = private network, tidak bisa diakses dari luar | Mei 2026 |
 | Skip Sentry setup dari sisi QA | Sentry sudah terpasang oleh developer, QA cukup minta akses dashboard | Mei 2026 |
 | E2E checkout pakai `storageState` + `beforeAll` | Login 1x untuk semua test — hindari rate limit OTP staging saat parallel run | Mei 2026 |

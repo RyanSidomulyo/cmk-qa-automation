@@ -19,10 +19,42 @@ jobs:
         run: npm ci
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
+      - name: Restore previous QA state
+        id: cache_state
+        uses: actions/cache@v4
+        with:
+          path: prev_qa_state.json
+          key: qa-state-thepalace-prod-${{ github.run_id }}
+          restore-keys: |
+            qa-state-thepalace-prod-
       - name: Run QA tests The Palace Production
         id: run_tests
         run: TEST_ENV=production BRAND=thepalace npx playwright test --project=thepalace
         continue-on-error: true
+      - name: Decide whether to send email (dedup)
+        id: dedup
+        if: always()
+        env:
+          PREV_STATE_FILE: prev_qa_state.json
+          CURR_STATE_FILE: qa_state.json
+          MAX_QUIET_HOURS: '6'
+        run: bash scripts/should_send_email.sh
+      - name: Persist current QA state for next run
+        if: always()
+        run: |
+          if [ -f qa_state.json ]; then
+            if [ "${{ steps.dedup.outputs.should_send }}" = "true" ]; then
+              jq '. + {lastEmailedAt: .timestamp}' qa_state.json > prev_qa_state.json
+            else
+              if [ -f prev_qa_state.json ]; then
+                PREV_EMAILED=$(jq -r '.lastEmailedAt // .timestamp' prev_qa_state.json)
+                jq --arg le "$PREV_EMAILED" '. + {lastEmailedAt: $le}' qa_state.json > prev_qa_state.json.new
+                mv prev_qa_state.json.new prev_qa_state.json
+              else
+                cp qa_state.json prev_qa_state.json
+              fi
+            fi
+          fi
       - name: Debug — check files
         if: always()
         run: |
@@ -52,9 +84,10 @@ jobs:
           path: |
             playwright-report/
             qa-report.html
+            qa_state.json
           retention-days: 7
       - name: Send email notification
-        if: always()
+        if: always() && steps.dedup.outputs.should_send == 'true'
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -66,3 +99,7 @@ jobs:
           from: sidomulyo784@gmail.com
           html_body: file://${{ github.workspace }}/qa_email_body.html
           convert_markdown: false
+      - name: Email suppressed (dedup)
+        if: always() && steps.dedup.outputs.should_send != 'true'
+        run: |
+          echo "::notice title=Email suppressed::Email dedup aktif. Alasan: ${{ steps.dedup.outputs.reason }}"

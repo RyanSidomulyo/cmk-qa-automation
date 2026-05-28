@@ -264,8 +264,42 @@ class DetailedReporter {
     }
     try { fs.writeFileSync('/tmp/qa_email_body.txt', text); } catch (e) { /* ignore on GitHub Actions */ }
     fs.writeFileSync('qa_email_body.txt', text);
+
+    // ── Emit qa_state.json untuk email deduplication ────────────────────────
+    // Hash signature dari failure (test title + 1st error line normalized).
+    // Hash sama antar run = bug yang sama berulang → workflow skip email.
+    const crypto = require('crypto');
+    const signature = failedList
+      .map(r => {
+        const err = (r.errors[0] || '')
+          .replace(/\x1b\[[0-9;]*m/g, '')   // strip ANSI
+          .split('\n')[0]
+          .replace(/\d{4,}/g, 'N')          // normalize angka (timestamp, ID)
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 200);
+        return (r.suite || '') + ' :: ' + r.title + ' :: ' + err;
+      })
+      .sort()
+      .join('\n');
+    const failureHash = failedList.length === 0
+      ? 'PASSED'
+      : crypto.createHash('sha256').update(signature).digest('hex').slice(0, 16);
+
+    const state = {
+      brand: brandKey,
+      env: process.env.TEST_ENV || 'staging',
+      status: isPass ? 'passed' : 'failed',
+      failureHash,
+      failedCount: failed,
+      passedCount: passed,
+      timestamp: this.startTime.toISOString(),
+    };
+    fs.writeFileSync('qa_state.json', JSON.stringify(state, null, 2));
+
     console.log('Report tersimpan: qa-report.html');
     console.log('Email HTML tersimpan: /tmp/qa_email_body.html');
+    console.log('State tersimpan: qa_state.json (failureHash=' + failureHash + ')');
   }
 }
 
