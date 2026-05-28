@@ -82,22 +82,17 @@ SELESAI ✅ Production + Staging
 SELESAI ✅ Production + Staging
 - navigation, high-jewelry, boutique-locations, contact-us, faq, terms, stories
 
-### The Palace (5 specs) — `tests/thepalace/`
-IN PROGRESS 🚧
+### The Palace (9 specs) — `tests/thepalace/`
+SELESAI ✅ Production + Staging
 - ✅ navigation.spec.js (6 tests)
 - ✅ collection.spec.js (7 tests)
 - ✅ article.spec.js (5 tests)
 - ✅ product-category.spec.js (11 tests) — includes filter + product detail + 15 submenu check
 - ✅ gold-price.spec.js (3 tests)
-
-**Pending The Palace specs:**
-- Lokasi Boutique (`/location`)
-- FAQ (`/faq`)
-- Tentang Kami (`/about/the-palace`)
-- Tentang Berlian (`/about/diamond`)
-- Tentang Emas (`/about/gold`)
-- Syarat dan Ketentuan (`/terms-condition`)
-- Kebijakan Privasi (`/privacy-policies`)
+- ✅ boutique-locations.spec.js (5 tests)
+- ✅ faq.spec.js (4 tests)
+- ✅ about.spec.js (6 tests)
+- ✅ legal.spec.js (6 tests)
 
 ---
 
@@ -134,7 +129,7 @@ IN PROGRESS 🚧
 |---|---|---|---|
 | `qa-frankco-production.yml` | Frank & Co | Production | Setiap jam |
 | `qa-mondial-production.yml` | Mondial | Production | Setiap jam |
-| `qa-thepalace-production.yml` | The Palace | Production | Setiap jam (PENDING setup) |
+| `qa-thepalace-production.yml` | The Palace | Production | Setiap jam |
 
 **Secrets di GitHub:**
 - `GMAIL_USER`
@@ -147,7 +142,7 @@ IN PROGRESS 🚧
 
 **Disabled (legacy):** `run_tests_frankco_production.sh` — duplikat dengan GitHub Actions
 
-**TODO:** Cron Mondial staging + The Palace staging belum dibuat.
+Semua cron sudah aktif.
 
 ---
 
@@ -246,16 +241,16 @@ crontab -e       # edit cron
 
 ## 🗺 Roadmap
 
-### Phase 1: Spec Coverage (NOW)
-- [ ] Selesaikan The Palace remaining specs (lokasi, FAQ, tentang, terms, privacy)
-- [ ] Setup GitHub Actions The Palace production
-- [ ] Setup cron staging Mondial + The Palace
+### Phase 1: Spec Coverage ✅ SELESAI
+- [x] Selesaikan The Palace remaining specs (lokasi, FAQ, tentang, terms, privacy)
+- [x] Setup GitHub Actions The Palace production
+- [x] Setup cron staging Mondial + The Palace
 
 ### Phase 2: DMS Admin Testing
 - Login, role-based access, create product, edit harga, publish artikel
 
 ### Phase 3: Quality Improvements (priority order)
-1. **UptimeRobot setup** (ROI tertinggi — 1 jam setup, dampak besar)
+1. ~~**UptimeRobot setup**~~ ✅ SELESAI
 2. **Sentry untuk error tracking real-time** (gratis tier)
 3. **API testing** pakai Playwright API mode (`request.get/post`)
 4. **Lighthouse CI** untuk performance regression
@@ -317,5 +312,5 @@ Contoh format console log standar:
 
 ---
 
-*Last updated: 26 Mei 2026*
+*Last updated: 28 Mei 2026*
 *Generated dari conversation history Claude.ai*
