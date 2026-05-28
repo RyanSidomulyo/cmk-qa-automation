@@ -83,16 +83,18 @@ CMK punya beberapa brand jewelry yang di-test:
 
 ## 📋 Spec Inventory
 
-### Frank & Co (13 specs) — `tests/ecomm/`
+### Frank & Co (16 specs) — `tests/ecomm/`
 SELESAI ✅ Production + Staging
 - navigation, frank-fire, high-jewellery, love-commitment, mens, stories
 - about-us, contact-us, diamond-education, size-guide, faq, store-locations, product-detail
+- **site-health** (SEO + 3rd party tracker), **contact-form-validation**, **visual** (staging only)
 
-### Mondial (7 specs) — `tests/mondial/`
+### Mondial (9 specs) — `tests/mondial/`
 SELESAI ✅ Production + Staging
 - navigation, high-jewelry, boutique-locations, contact-us, faq, terms, stories
+- **site-health**, **contact-form-validation**, **visual** (staging only)
 
-### The Palace (10 specs) — `tests/thepalace/`
+### The Palace (12 specs) — `tests/thepalace/`
 SELESAI ✅ Production + Staging
 - ✅ navigation.spec.js (6 tests)
 - ✅ collection.spec.js (7 tests)
@@ -104,6 +106,8 @@ SELESAI ✅ Production + Staging
 - ✅ about.spec.js (6 tests)
 - ✅ legal.spec.js (6 tests)
 - ✅ checkout.spec.js (5 tests) — E2E: login OTP → add to cart → cart drawer → info pengiriman → checkout
+- ✅ **site-health.spec.js** (6 tests) — SEO meta + 3rd party + Sentry SDK
+- ✅ **visual.spec.js** (3 tests, staging only) — homepage + collection + category
 
 ---
 
@@ -316,25 +320,62 @@ Default UA Chromium di-append marker `PlaywrightQA/1.0` (di-set di `playwright.c
 Helper `tests/helpers/api-monitor.js` — pasif dengar response, fail kalau ada 5xx
 di endpoint `/api/`, `/graphql`, `/_next/data/`. Auto-ignore Sentry/GA/GTM/asset.
 
-**Cara pakai (opt-in per spec):**
+**Sekarang AKTIF di SEMUA spec via fixture** `tests/helpers/fixtures.js`.
+Spec hanya perlu import dari fixture:
 ```javascript
-const { attachApiMonitor } = require('../helpers/api-monitor');
-
-test.beforeEach(async ({ page }, testInfo) => {
-  testInfo.apiMon = attachApiMonitor(page, testInfo);
-});
-test.afterEach(async ({}, testInfo) => {
-  // Hanya assert kalau test utama lulus (jangan timpa root cause asli)
-  if (testInfo.status === testInfo.expectedStatus) {
-    testInfo.apiMon?.assertClean();
-  }
-});
+const { test, expect } = require('../helpers/fixtures');
+// API monitor auto-attach di setiap test
 ```
 
-**Sudah aktif di:** `tests/thepalace/checkout.spec.js` (pilot)
+**Mode (env `API_MONITOR`):**
+- `warn` (default) — log warning, jangan fail
+- `strict` — fail test kalau ada 5xx
+- `off` — disable
 
-Tambah `ignorePatterns: [/regex/]` di `attachApiMonitor()` kalau ada false positive
-endpoint pihak ketiga yang non-critical.
+Setelah rollout stabil di staging, flip ke strict di workflow production:
+```bash
+API_MONITOR=strict npx playwright test ...
+```
+
+Tambah ignore pattern via spec lokal kalau perlu (lihat `api-monitor.js` opts).
+
+### Site Health (SEO + 3rd Party)
+Helper `tests/helpers/site-health.js` + spec `*/site-health.spec.js` per brand:
+- **SEO meta validation**: title, description, canonical, og:image, og:title,
+  robots, lang. Validasi length sesuai best practice (title 25-70 char, desc 50-165).
+- **3rd party tracker check**: GA4, GTM, Sentry, Facebook Pixel, reCAPTCHA, Hotjar, Clarity.
+  Hanya fail di 5xx (4xx pada GA collect adalah expected = consent rejection).
+- **Sentry SDK check** (The Palace): cek `window.Sentry` exists (bukan via network,
+  karena Sentry hanya kirim request saat ada error).
+- **Console error check**: log error JavaScript di homepage.
+
+Insight bonus dari spec ini di run pertama:
+- Mondial → halaman `/en/boutiques` & `/en/faq` ada title "404 - Mondial" untuk URL salah
+- Frank & Co Contact Us → ogImage kosong + description >165 char
+- The Palace → Sentry SDK perlu verifikasi presence di staging
+
+### Contact Form Validation
+Spec `*/contact-form-validation.spec.js` (Frank & Co + Mondial).
+TIDAK submit beneran (reCAPTCHA blocking by design). Validasi:
+- Empty submit tidak ke-POST ke backend
+- Email invalid ditolak browser native validation
+- reCAPTCHA widget muncul (lazy-loaded, timeout 10s)
+
+The Palace tidak ada contact form khusus — flow form sudah di-cover di `checkout.spec.js`.
+
+### Visual Regression
+Spec `*/visual.spec.js` per brand (HANYA staging, di-skip di production).
+Pakai Playwright `toHaveScreenshot()` + helper `tests/helpers/visual.js` yang:
+- Disable animasi/transition supaya screenshot deterministik
+- Hide elemen dinamis (gold price, banner promo, harga produk)
+- Wait font load + trigger lazy images
+- Tolerance 2-3% diff pixel
+
+**First run** generate baseline di `tests/__screenshots__/...`. Subsequent run bandingkan.
+Update baseline setelah perubahan UI legit:
+```bash
+npx playwright test visual --update-snapshots
+```
 
 ### Reporter behavior
 File `reporter.js` brand-aware via env `BRAND`:
