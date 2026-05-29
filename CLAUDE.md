@@ -83,18 +83,20 @@ CMK punya beberapa brand jewelry yang di-test:
 
 ## 📋 Spec Inventory
 
-### Frank & Co (16 specs) — `tests/ecomm/`
+### Frank & Co (17 specs) — `tests/ecomm/`
 SELESAI ✅ Production + Staging
 - navigation, frank-fire, high-jewellery, love-commitment, mens, stories
 - about-us, contact-us, diamond-education, size-guide, faq, store-locations, product-detail
 - **site-health** (SEO + 3rd party tracker), **contact-form-validation**, **visual** (staging only)
+- **checkout** (E2E: login OTP → add to bag → cart drawer → checkout/address), **wishlist** (add to wishlist + verify di /en/wishlists)
 
-### Mondial (9 specs) — `tests/mondial/`
+### Mondial (10 specs) — `tests/mondial/`
 SELESAI ✅ Production + Staging
 - navigation, high-jewelry, boutique-locations, contact-us, faq, terms, stories
 - **site-health**, **contact-form-validation**, **visual** (staging only)
+- **wishlist** (skip checkout: produk Mondial yang tersedia adalah inquiry-only, tidak ada Add to Bag)
 
-### The Palace (12 specs) — `tests/thepalace/`
+### The Palace (13 specs) — `tests/thepalace/`
 SELESAI ✅ Production + Staging
 - ✅ navigation.spec.js (6 tests)
 - ✅ collection.spec.js (7 tests)
@@ -108,6 +110,7 @@ SELESAI ✅ Production + Staging
 - ✅ checkout.spec.js (5 tests) — E2E: login OTP → add to cart → cart drawer → info pengiriman → checkout
 - ✅ **site-health.spec.js** (6 tests) — SEO meta + 3rd party + Sentry SDK
 - ✅ **visual.spec.js** (3 tests, staging only) — homepage + collection + category
+- ✅ **wishlist.spec.js** (1 test) — add to wishlist + verify di /wishlist
 
 ---
 
@@ -120,6 +123,8 @@ SELESAI ✅ Production + Staging
 ### Mondial
 - **Staging**: ENCHANTALES (`/en/collections/enchantales`) → 500 Server Error
 - **Staging**: `/en/terms` ERR_CONNECTION_RESET intermittent (sudah pakai `gotoWithRetry()` helper)
+- **Staging**: `POST /x-api/customers/request-otp` intermittent 500 → login OTP gagal,
+  block test `wishlist.spec.js`. Helper `ecommerce.js` deteksi & throw error eksplisit.
 
 ### The Palace
 - **Staging — gambar broken**: `/article/lorem-ipsum`
