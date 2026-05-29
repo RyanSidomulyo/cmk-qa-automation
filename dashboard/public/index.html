@@ -229,6 +229,7 @@
   let config = null;
   let currentStream = null;
   let currentStreamId = null;
+  let lastRunsSignature = null; // signature buat deteksi perubahan, hindari re-render tiap polling
 
   function fmtTime(iso) {
     if (!iso) return '-';
@@ -308,6 +309,26 @@
   }
 
   function renderCards(status) {
+    // Hindari re-render kalau status running tidak berubah,
+    // karena innerHTML='' menutup dropdown yang sedang dibuka user.
+    const signature = JSON.stringify(
+      config.brands.map((b) => {
+        const r = status.runs[b.id];
+        return r ? [b.id, r.id, r.env, r.spec || ''] : [b.id, 'idle'];
+      })
+    );
+    if (signature === lastRunsSignature) return;
+    lastRunsSignature = signature;
+
+    // Simpan pilihan dropdown user sebelum re-render
+    const preserved = {};
+    config.brands.forEach((b) => {
+      const envEl  = document.getElementById('env-' + b.id);
+      const specEl = document.getElementById('spec-' + b.id);
+      if (envEl)  preserved[b.id + '_env']  = envEl.value;
+      if (specEl) preserved[b.id + '_spec'] = specEl.value;
+    });
+
     cardsEl.innerHTML = '';
     config.brands.forEach((b) => {
       const run = status.runs[b.id];
@@ -342,6 +363,14 @@
         ` : ''}
       `;
       cardsEl.appendChild(card);
+    });
+
+    // Restore pilihan dropdown user
+    config.brands.forEach((b) => {
+      const envEl  = document.getElementById('env-' + b.id);
+      const specEl = document.getElementById('spec-' + b.id);
+      if (envEl  && preserved[b.id + '_env']  !== undefined) envEl.value  = preserved[b.id + '_env'];
+      if (specEl && preserved[b.id + '_spec'] !== undefined) specEl.value = preserved[b.id + '_spec'];
     });
   }
 
